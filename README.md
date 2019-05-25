@@ -9,7 +9,10 @@ Enable the visualisation of HTTP traffic across routing scenarios through the us
 Below is a screenshot of the traffic display result.
 <img src="./docs/images/traffic-display-example.png" />
 
+## Toggle Healthy Endpoints
+To toggle the state of an endpoint between 200 OK and 503 Maintenance, perform a GET or POST HTTp call to the URL of the specific back end to the below URI:
+*http://my-traffic-endpoint/api/toggleHealthy*
+
+## Examples
 ### Azure Front Door
 ARM template example demonstrating Azure Front Door routing within examples/azure-front-door directory. This template will create all the resources required to demonstrate routing features of Azure Front Door.
-
-
