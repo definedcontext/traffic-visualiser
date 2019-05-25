@@ -1,0 +1,36 @@
+/* Please see documentation at https://docs.microsoft.com/aspnet/core/client-side/bundling-and-minification 
+for details on configuring this project to bundle and minify static web assets. */
+body {
+    padding-top: 20px;
+    padding-bottom: 20px;
+}
+
+.traffic-column, .health-coloum {
+    background-color: #F9F9F9;
+    padding: 10px;
+}
+
+.statusCheck, .traffic {
+    padding: 5px;
+    margin: 5px;
+}
+
+.statusCheck.success {
+    color: white;
+    background-color:green;
+}
+
+.statusCheck.failed {
+    color: white;
+    background-color: red;
+}
+
+.traffic.StyleA {
+    background-color: #FF69B4;
+    color: white;
+}
+
+.traffic.StyleB {
+    background-color: #191970;
+    color: white;
+}

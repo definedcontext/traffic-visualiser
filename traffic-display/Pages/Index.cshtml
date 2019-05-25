@@ -1,0 +1,61 @@
+﻿@page
+<div class="container">
+    <div class="row">
+        <div class="col-md-8">
+            <h3>Traffic Display</h3>
+        </div>
+        <div class="col-md-4">
+            <h3>Status: <span id="status">...</span></h3>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-4">
+            <h3 id="A_label">...</h3>
+            <div class="row">
+                <div class="col-md-5"><small>Traffic (<span id="A_trafficCount">0</span>)</small></div>
+                <div class="col-md-1"></div>
+                <div class="col-md-5"><small>Health (<span id="A_healthCount">0</span>)</small></div>
+                <div class="col-md-1"></div>
+            </div>
+            <div class="row">
+                <div class="col-md-5 traffic-column" id="A_traffic"></div>
+                <div class="col-md-1"></div>
+                <div class="col-md-5 health-coloum" id="A_health"></div>
+                <div class="col-md-1"></div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <h3 id="B_label">...</h3>
+            <div class="row">
+                <div class="col-md-5"><small>Traffic (<span id="B_trafficCount">0</span>)</small></div>
+                <div class="col-md-1"></div>
+                <div class="col-md-5"><small>Health (<span id="B_healthCount">0</span>)</small></div>
+                <div class="col-md-1"></div>
+            </div>
+            <div class="row">
+                <div class="col-md-5 traffic-column" id="B_traffic"></div>
+                <div class="col-md-1"></div>
+                <div class="col-md-5 health-coloum" id="B_health"></div>
+                <div class="col-md-1"></div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <h3 id="C_label">...</h3>
+            <div class="row">
+                <div class="col-md-5"><small>Traffic (<span id="C_trafficCount">0</span>)</small></div>
+                <div class="col-md-1"></div>
+                <div class="col-md-5"><small>Health (<span id="C_healthCount">0</span>)</small></div>
+                <div class="col-md-1"></div>
+            </div>
+            <div class="row">
+                <div class="col-md-5 traffic-column" id="C_traffic"></div>
+                <div class="col-md-1"></div>
+                <div class="col-md-5 health-coloum" id="C_health"></div>
+                <div class="col-md-1"></div>
+            </div>
+        </div>
+
+    </div>
+</div>
+<script src="~/lib/signalr/dist/browser/signalr.js"></script>
+<script src="~/js/simulator.js"></script>

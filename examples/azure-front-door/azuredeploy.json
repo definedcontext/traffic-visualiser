@@ -1,0 +1,326 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+    },
+    "variables": {
+        "image": "definedcontext/traffic-endpoint",
+        "displayImage": "definedcontext/traffic-display",
+        "generatorImage": "definedcontext/traffic-generator",
+        "uniquePortion": "[substring(uniqueString(concat(subscription().subscriptionId,resourceGroup().name)),0,6)]",
+        "generators": [
+            {
+                "location": "westus",
+                "style": "StyleA",
+                "source": "US"
+            },
+            {
+                "location": "australiaeast",
+                "style": "StyleB",
+                "source": "AU"
+            }
+        ],
+        "containers": [
+            {
+                "location": "westeurope",
+                "endpointLabel": "West Europe",
+                "endpoint": "A"
+            },
+            {
+                "location": "westus",
+                "endpointLabel": "West US",
+                "endpoint": "B"
+            },
+            {
+                "location": "australiaeast",
+                "endpointLabel": "Australia East",
+                "endpoint": "C"
+            }
+        ],
+        "signalRName": "[concat('demo','-',variables('uniquePortion'),'-signalr')]",
+        "frontDoorName": "[concat('demo','-',variables('uniquePortion'),'-afd')]",
+        "frontDoorResourceId": "[resourceId('Microsoft.Network/frontDoors', variables('frontDoorName'))]"
+    },
+    "resources": [
+        {
+            "type": "Microsoft.SignalRService/SignalR",
+            "name": "[variables('signalRName')]",
+            "apiVersion": "2018-03-01-preview",
+            "location": "[resourceGroup().location]",
+            "properties": {
+                "domainLabel": "[variables('signalRName')]"
+            },
+            "sku": {
+                "name": "Basic_DS2",
+                "tier": "Basic",
+                "capacity": "1"
+            }
+        },
+        {
+            "name": "[concat('traffic-generator-',variables('generators')[copyIndex('traffic-generator-dependency-loop')].location,'-',variables('uniquePortion'),'-aci')]",
+            "type": "Microsoft.ContainerInstance/containerGroups",
+            "apiVersion": "2018-10-01",
+            "dependsOn": [
+                "[variables('frontDoorName')]",
+                "[variables('signalRName')]"
+            ],
+            "location": "[variables('generators')[copyIndex('traffic-generator-dependency-loop')].location]",
+            "copy": {
+                "name": "traffic-generator-dependency-loop",
+                "count": "[length(variables('generators'))]"
+            },
+            "properties": {
+                "containers": [
+                    {
+                        "name": "[concat('traffic-generator-',variables('generators')[copyIndex('traffic-generator-dependency-loop')].location,'-',variables('uniquePortion'),'-aci')]",
+                        "properties": {
+                            "image": "[variables('generatorImage')]",
+                            "environmentVariables": [
+                                {
+                                    "name": "Style",
+                                    "value": "[variables('generators')[copyIndex('traffic-generator-dependency-loop')].style]"
+                                },
+                                {
+                                    "name": "Source",
+                                    "value": "[variables('generators')[copyIndex('traffic-generator-dependency-loop')].source]"
+                                },
+                                {
+                                    "name": "SleepTime",
+                                    "value": "1000"
+                                },
+                                {
+                                    "name": "Url",
+                                    "value": "[concat('https://', variables('frontDoorName'), '.azurefd.net/api/traffic')]"
+                                }
+                            ],
+                            "command": [],
+                            "ports": [
+                                {
+                                    "port": "80"
+                                }
+                            ],
+                            "resources": {
+                                "requests": {
+                                    "cpu": "1",
+                                    "memoryInGb": "1"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "osType": "Linux",
+                "restartPolicy": "always",
+                "ipAddress": {
+                    "type": "Public",
+                    "ports": [
+                        {
+                            "protocol": "Tcp",
+                            "port": "80"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "name": "[concat('backend-simulator-',variables('containers')[copyIndex('container-dependency-loop')].location,'-',variables('uniquePortion'),'-aci')]",
+            "type": "Microsoft.ContainerInstance/containerGroups",
+            "apiVersion": "2018-10-01",
+            "location": "[variables('containers')[copyIndex('container-dependency-loop')].location]",
+            "copy": {
+                "name": "container-dependency-loop",
+                "count": "[length(variables('containers'))]"
+            },
+            "properties": {
+                "containers": [
+                    {
+                        "name": "[concat('backend-simulator-',variables('containers')[copyIndex('container-dependency-loop')].location,'-',variables('uniquePortion'),'-aci')]",
+                        "properties": {
+                            "image": "[variables('image')]",
+                            "environmentVariables": [
+                                {
+                                    "name": "EndpointLabel",
+                                    "value": "[variables('containers')[copyIndex('container-dependency-loop')].endpointLabel]"
+                                },
+                                {
+                                    "name": "Endpoint",
+                                    "value": "[variables('containers')[copyIndex('container-dependency-loop')].endpoint]"
+                                },
+                                {
+                                    "name": "AzureSignalRConnectionString",
+                                    "value": "[listKeys(resourceId('Microsoft.SignalRService/SignalR', variables('signalRName')), providers('Microsoft.SignalRService','SignalR').apiVersions[0]).primaryConnectionString]"
+                                }
+                            ],
+                            "command": [],
+                            "ports": [
+                                {
+                                    "port": "80"
+                                }
+                            ],
+                            "resources": {
+                                "requests": {
+                                    "cpu": "1",
+                                    "memoryInGb": "1"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "osType": "Linux",
+                "restartPolicy": "always",
+                "ipAddress": {
+                    "type": "Public",
+                    "ports": [
+                        {
+                            "protocol": "Tcp",
+                            "port": "80"
+                        }
+                    ],
+                    "dnsNameLabel": "[concat('backend-simulator-',variables('containers')[copyIndex('container-dependency-loop')].location,'-',variables('uniquePortion'),'-aci')]"
+                }
+            }
+        },
+        {
+            "apiVersion": "2018-08-01",
+            "type": "Microsoft.Network/frontDoors",
+            "name": "[variables('frontDoorName')]",
+            "location": "global",
+            "dependsOn": [
+                "container-dependency-loop"
+            ],
+            "tags": {},
+            "properties": {
+                "routingRules": [
+                    {
+                        "name": "routeToAciInstances",
+                        "properties": {
+                            "frontendEndpoints": [
+                                {
+                                    "id": "[concat(variables('frontDoorResourceId'),'/frontendEndpoints/demoFrontendEndpoint')]"
+                                }
+                            ],
+                            "acceptedProtocols": [
+                                "Http",
+                                "Https"
+                            ],
+                            "patternsToMatch": [
+                                "/*"
+                            ],
+                            "forwardingProtocol": "HttpOnly",
+                            "backendPool": {
+                                "id": "[concat(variables('frontDoorResourceId'),'/backendPools/acibackends')]"
+                            },
+                            "enabledState": "Enabled"
+                        }
+                    }
+                ],
+                "healthProbeSettings": [
+                    {
+                        "name": "demoHealthProbeSettings",
+                        "properties": {
+                            "path": "/api/health",
+                            "protocol": "Http",
+                            "intervalInSeconds": 30
+                        }
+                    }
+                ],
+                "loadBalancingSettings": [
+                    {
+                        "name": "demoLoadBalancingSettings",
+                        "properties": {
+                            "sampleSize": 4,
+                            "successfulSamplesRequired": 2
+                        }
+                    }
+                ],
+                "backendPools": [
+                    {
+                        "name": "acibackends",
+                        "properties": {
+                            "copy": [
+                                {
+                                    "name": "backends",
+                                    "count": "[length(variables('containers'))]",
+                                    "input": {
+                                        "address": "[reference(resourceId('Microsoft.ContainerInstance/containerGroups/', concat('backend-simulator-',variables('containers')[copyIndex('backends')].location,'-',variables('uniquePortion'),'-aci'))).ipAddress.fqdn]",
+                                        "httpPort": "80",
+                                        "httpsPort": "443",
+                                        "weight": "50",
+                                        "priority": "1",
+                                        "enabledState": "Enabled"
+                                    }
+                                }
+                            ],
+                            "loadBalancingSettings": {
+                                "id": "[concat(variables('frontDoorResourceId'),'/loadBalancingSettings/demoLoadBalancingSettings')]"
+                            },
+                            "healthProbeSettings": {
+                                "id": "[concat(variables('frontDoorResourceId'),'/healthProbeSettings/demoHealthProbeSettings')]"
+                            }
+                        }
+                    }
+                ],
+                "frontendEndpoints": [
+                    {
+                        "name": "demoFrontendEndpoint",
+                        "properties": {
+                            "hostName": "[concat(variables('frontDoorName'), '.azurefd.net')]",
+                            "sessionAffinityEnabledState": "Disabled",
+                            "sessionAffinityTtlSeconds": 0
+                        }
+                    }
+                ],
+                "enabledState": "Enabled"
+            }
+        },
+        {
+            "name": "[concat('traffic-display-',variables('uniquePortion'),'-aci')]",
+            "type": "Microsoft.ContainerInstance/containerGroups",
+            "apiVersion": "2018-10-01",
+            "dependsOn": [
+                "[variables('signalRName')]"
+            ],
+            "location": "eastus",
+            "properties": {
+                "containers": [
+                    {
+                        "name": "[concat('traffic-display-',variables('uniquePortion'),'-aci')]",
+                        "properties": {
+                            "image": "[variables('displayImage')]",
+                            "environmentVariables": [
+                                {
+                                    "name": "AzureSignalRConnectionString",
+                                    "value": "[listKeys(resourceId('Microsoft.SignalRService/SignalR', variables('signalRName')), providers('Microsoft.SignalRService','SignalR').apiVersions[0]).primaryConnectionString]"
+                                }
+                            ],
+                            "command": [],
+                            "ports": [
+                                {
+                                    "port": "80"
+                                }
+                            ],
+                            "resources": {
+                                "requests": {
+                                    "cpu": "1",
+                                    "memoryInGb": "1"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "osType": "Linux",
+                "restartPolicy": "always",
+                "ipAddress": {
+                    "type": "Public",
+                    "ports": [
+                        {
+                            "protocol": "Tcp",
+                            "port": "80"
+                        }
+                    ],
+                    "dnsNameLabel": "[concat('traffic-display-',variables('uniquePortion'),'-aci')]"
+                }
+            }
+        }
+    ],
+    "outputs": {}
+}
